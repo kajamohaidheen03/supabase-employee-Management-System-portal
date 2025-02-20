@@ -4,6 +4,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,12 +22,20 @@ import { useToast } from "@/components/ui/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2, Check, X, Pencil, Trash } from "lucide-react";
 
+type Employee = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: string;
+};
+
 type Attendance = {
   id: string;
   date: string;
   status: string;
   employee_id: string;
   created_at: string;
+  employees?: Employee;
 };
 
 const Dashboard = () => {
@@ -28,6 +43,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("");
 
   useEffect(() => {
     const checkUser = async () => {
@@ -40,26 +56,56 @@ const Dashboard = () => {
     checkUser();
   }, [navigate]);
 
-  const { data: attendanceData, isLoading } = useQuery({
+  const { data: employees, isLoading: isLoadingEmployees } = useQuery({
+    queryKey: ['employees'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*');
+      
+      if (error) throw error;
+      return data as Employee[];
+    }
+  });
+
+  const { data: attendanceData, isLoading: isLoadingAttendance } = useQuery({
     queryKey: ['attendance'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('attendance')
-        .select('*')
+        .select(`
+          *,
+          employees (
+            id,
+            full_name,
+            email,
+            role
+          )
+        `)
         .order('date', { ascending: false });
       
       if (error) throw error;
-      return data as Attendance[];
+      return data as (Attendance & { employees: Employee })[];
     }
   });
 
   const markAttendance = async (status: string) => {
+    if (!selectedEmployee) {
+      toast({
+        title: "Error",
+        description: "Please select an employee",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('attendance')
         .insert({
           date: selectedDate,
           status: status,
+          employee_id: selectedEmployee
         });
 
       if (error) throw error;
@@ -132,6 +178,18 @@ const Dashboard = () => {
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Mark Attendance</h2>
           <div className="flex gap-4 items-center">
+            <Select value={selectedEmployee} onValueChange={setSelectedEmployee}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select employee" />
+              </SelectTrigger>
+              <SelectContent>
+                {employees?.map((employee) => (
+                  <SelectItem key={employee.id} value={employee.id}>
+                    {employee.full_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <input
               type="date"
               value={selectedDate}
@@ -157,7 +215,7 @@ const Dashboard = () => {
 
         <div className="bg-white rounded-lg shadow">
           <h2 className="text-xl font-semibold p-6 border-b">Attendance Records</h2>
-          {isLoading ? (
+          {isLoadingAttendance || isLoadingEmployees ? (
             <div className="flex justify-center items-center p-8">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
@@ -165,6 +223,8 @@ const Dashboard = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Employee Name</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Actions</TableHead>
@@ -173,6 +233,8 @@ const Dashboard = () => {
               <TableBody>
                 {attendanceData?.map((record) => (
                   <TableRow key={record.id}>
+                    <TableCell>{record.employees?.full_name}</TableCell>
+                    <TableCell>{record.employees?.email}</TableCell>
                     <TableCell>{new Date(record.date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <span className={`px-2 py-1 rounded text-sm ${
