@@ -27,7 +27,7 @@ const AuthPage = () => {
         <Auth
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
-          providers={[]}
+          providers={["github"]}
           redirectTo={`${window.location.origin}/dashboard`}
           theme="dark"
         />
