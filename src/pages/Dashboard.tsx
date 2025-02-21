@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Loader2, Check, X, Pencil, Trash } from "lucide-react";
+import { Loader2, Check, X, Pencil, Trash, LogOut } from "lucide-react";
 
 type Employee = {
   id: string;
@@ -55,6 +54,20 @@ const Dashboard = () => {
     
     checkUser();
   }, [navigate]);
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate("/auth");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to log out",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: employees, isLoading: isLoadingEmployees } = useQuery({
     queryKey: ['employees'],
@@ -173,7 +186,17 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="max-w-6xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Employee Dashboard</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold">Employee Dashboard</h1>
+          <Button 
+            variant="outline" 
+            onClick={handleLogout}
+            className="gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Logout
+          </Button>
+        </div>
         
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Mark Attendance</h2>
