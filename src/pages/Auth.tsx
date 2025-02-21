@@ -20,6 +20,8 @@ const AuthPage = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
+  const site_url = window.location.origin;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-6 bg-white rounded-lg shadow-lg">
@@ -28,8 +30,9 @@ const AuthPage = () => {
           supabaseClient={supabase}
           appearance={{ theme: ThemeSupa }}
           providers={["github"]}
-          redirectTo={`${window.location.origin}/dashboard`}
+          redirectTo={`${site_url}/dashboard`}
           theme="dark"
+          onlyThirdPartyProviders={true}
         />
       </div>
     </div>
